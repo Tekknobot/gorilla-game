@@ -33,7 +33,52 @@ const SLAM_STUN := 0.50
 const HIT_FLASH_TIME := 0.10
 const HIT_FLASH_COLOR := Color(1.0, 0.15, 0.15, 1.0)
 
+# Palette-swap targets. Each color represents the main/light tone for that
+# source ramp; the shader preserves the original pixel-art shading beneath it.
+const SKIN_TONES = [
+	Color8(242, 190, 160), # fair
+	Color8(224, 165, 127), # light warm
+	Color8(219, 153, 120), # original
+	Color8(184, 120, 82),  # medium warm
+	Color8(145, 88, 58),   # brown
+	Color8(103, 61, 45),   # deep brown
+	Color8(72, 43, 34),    # dark
+]
+
+const TOP_COLORS = [
+	Color8(58, 78, 67),    # original field green
+	Color8(48, 61, 85),    # navy
+	Color8(88, 51, 57),    # burgundy
+	Color8(104, 65, 48),   # rust
+	Color8(44, 78, 82),    # teal
+	Color8(73, 81, 52),    # olive
+	Color8(66, 69, 73),    # charcoal
+	Color8(54, 78, 105),   # faded blue
+]
+
+const PANTS_COLORS = [
+	Color8(148, 132, 100), # original khaki
+	Color8(82, 92, 112),   # denim
+	Color8(86, 88, 91),    # charcoal
+	Color8(116, 89, 67),   # brown
+	Color8(104, 108, 73),  # olive
+	Color8(158, 139, 103), # sand
+	Color8(72, 78, 94),    # dark blue-grey
+	Color8(105, 73, 69),   # muted maroon
+]
+
 @export var max_health := 8
+
+@export_category("Lifecycle")
+@export var auto_respawn := true
+
+@export_category("Appearance")
+@export var randomize_palette_on_spawn := true
+@export var randomize_palette_on_respawn := true
+@export_range(-1, 6, 1) var skin_variant := -1
+@export_range(-1, 7, 1) var top_variant := -1
+@export_range(-1, 7, 1) var pants_variant := -1
+@export_range(0.0, 1.0, 0.05) var palette_strength := 1.0
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var body_shape: CollisionShape2D = $CollisionShape2D
@@ -52,16 +97,29 @@ var respawn_timer := 0.0
 var spawn_position := Vector2.ZERO
 var defeated := false
 var attack_connected := false
+var entering_arena := false
+var has_attack_slot := false
 var hurt_duration := HURT_TIME
 var hurt_requires_ground := false
 
 var hit_flash_tween: Tween
+var palette_material: ShaderMaterial
+var current_skin_variant := 2
+var current_top_variant := 0
+var current_pants_variant := 0
 
 func _ready() -> void:
 	spawn_position = global_position
 	health = max_health
+	add_to_group("human_enemies")
 
 	_build_sprite_frames()
+	_setup_palette_material()
+
+	if randomize_palette_on_spawn:
+		reroll_palette()
+	else:
+		_apply_selected_palette()
 
 	attack_hitbox.body_entered.connect(_on_attack_body_entered)
 	_set_attack_hitbox(false)
@@ -72,6 +130,11 @@ func _ready() -> void:
 
 func set_target(new_target: Node2D) -> void:
 	target = new_target
+
+
+func begin_offscreen_entry() -> void:
+	entering_arena = true
+	cooldown_timer = randf_range(0.45, 1.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -113,6 +176,22 @@ func _update_ai(delta: float) -> void:
 	var dx := target.global_position.x - global_position.x
 	var distance = abs(dx)
 
+	if entering_arena:
+		if distance > CHASE_RANGE * 0.72:
+			facing = sign(dx)
+			sprite.flip_h = facing < 0.0
+			state_name = &"WALK"
+			velocity.x = move_toward(
+				velocity.x,
+				facing * WALK_SPEED * 1.18,
+				GROUND_ACCEL * delta
+			)
+			_play(&"walk")
+			return
+
+		entering_arena = false
+		cooldown_timer = max(cooldown_timer, randf_range(0.20, 0.55))
+
 	if distance > 2.0:
 		facing = sign(dx)
 		sprite.flip_h = facing < 0.0
@@ -139,6 +218,14 @@ func _start_attack() -> void:
 	if defeated:
 		return
 
+	var scene = get_parent()
+	if scene != null and scene.has_method("request_enemy_attack"):
+		if not scene.request_enemy_attack(self):
+			cooldown_timer = randf_range(0.12, 0.30)
+			velocity.x = move_toward(velocity.x, 0.0, FRICTION * 0.08)
+			return
+		has_attack_slot = true
+
 	state_name = &"ATTACK"
 	action_timer = 0.0
 	attack_connected = false
@@ -163,7 +250,8 @@ func _update_attack(delta: float) -> void:
 
 	if action_timer >= ATTACK_TIME:
 		_set_attack_hitbox(false)
-		cooldown_timer = ATTACK_COOLDOWN
+		_release_attack_slot()
+		cooldown_timer = ATTACK_COOLDOWN + randf_range(0.0, 0.24)
 		state_name = &"IDLE"
 		_play(&"idle")
 
@@ -204,7 +292,11 @@ func _update_death(delta: float) -> void:
 	# death is non-looping, so AnimatedSprite2D naturally holds its final frame.
 	# Leave the body visible for a short beat before beginning the respawn delay.
 	if action_timer >= DEATH_TIME + DEATH_HOLD_TIME:
-		_hide_for_respawn()
+		if auto_respawn:
+			_hide_for_respawn()
+		else:
+			_release_attack_slot()
+			queue_free()
 
 
 func take_hit(
@@ -221,6 +313,7 @@ func take_hit(
 
 	_flash_hit()
 	_set_attack_hitbox(false)
+	_release_attack_slot()
 
 	var direction = sign(global_position.x - attacker_position.x)
 	if direction == 0.0:
@@ -290,6 +383,7 @@ func _start_death(knockback_direction: float) -> void:
 		return
 
 	defeated = true
+	_release_attack_slot()
 	state_name = &"DEATH"
 	action_timer = 0.0
 	attack_connected = false
@@ -308,6 +402,7 @@ func _start_death(knockback_direction: float) -> void:
 
 
 func _hide_for_respawn() -> void:
+	_release_attack_slot()
 	visible = false
 	velocity = Vector2.ZERO
 
@@ -323,6 +418,7 @@ func _hide_for_respawn() -> void:
 
 
 func _respawn() -> void:
+	_release_attack_slot()
 	global_position = spawn_position
 	velocity = Vector2.ZERO
 
@@ -344,12 +440,109 @@ func _respawn() -> void:
 
 	sprite.self_modulate = Color.WHITE
 
+	if randomize_palette_on_respawn:
+		reroll_palette()
+
 	state_name = &"IDLE"
 	_play(&"idle", true)
 
 	health_changed.emit(health, max_health)
 	respawned.emit(max_health)
 	
+func _release_attack_slot() -> void:
+	if not has_attack_slot:
+		return
+
+	var scene = get_parent()
+	if scene != null and scene.has_method("release_enemy_attack"):
+		scene.release_enemy_attack(self)
+
+	has_attack_slot = false
+
+
+func _setup_palette_material() -> void:
+	# ShaderMaterial subresources are shared by default. Duplicate it so every
+	# enemy instance can have its own palette without recoloring every enemy.
+	if sprite.material is ShaderMaterial:
+		palette_material = (sprite.material as ShaderMaterial).duplicate() as ShaderMaterial
+		sprite.material = palette_material
+		palette_material.set_shader_parameter("palette_strength", palette_strength)
+
+
+func reroll_palette() -> void:
+	if palette_material == null:
+		_setup_palette_material()
+
+	if skin_variant >= 0:
+		current_skin_variant = skin_variant
+	else:
+		current_skin_variant = randi_range(0, SKIN_TONES.size() - 1)
+
+	if top_variant >= 0:
+		current_top_variant = top_variant
+	else:
+		current_top_variant = randi_range(0, TOP_COLORS.size() - 1)
+
+	if pants_variant >= 0:
+		current_pants_variant = pants_variant
+	else:
+		current_pants_variant = randi_range(0, PANTS_COLORS.size() - 1)
+
+	_apply_palette(
+		current_skin_variant,
+		current_top_variant,
+		current_pants_variant
+	)
+
+
+func _apply_selected_palette() -> void:
+	current_skin_variant = 2
+	current_top_variant = 0
+	current_pants_variant = 0
+
+	if skin_variant >= 0:
+		current_skin_variant = skin_variant
+	if top_variant >= 0:
+		current_top_variant = top_variant
+	if pants_variant >= 0:
+		current_pants_variant = pants_variant
+
+	_apply_palette(
+		current_skin_variant,
+		current_top_variant,
+		current_pants_variant
+	)
+
+
+func _apply_palette(skin_index: int, top_index: int, pants_index: int) -> void:
+	if palette_material == null:
+		return
+
+	skin_index = clampi(skin_index, 0, SKIN_TONES.size() - 1)
+	top_index = clampi(top_index, 0, TOP_COLORS.size() - 1)
+	pants_index = clampi(pants_index, 0, PANTS_COLORS.size() - 1)
+
+	var skin: Color = SKIN_TONES[skin_index]
+	var top: Color = TOP_COLORS[top_index]
+	var pants: Color = PANTS_COLORS[pants_index]
+
+	# Vector3 is intentional: the shader expects raw sRGB values so the pixel
+	# palette math remains deterministic instead of receiving color-space hints.
+	palette_material.set_shader_parameter(
+		"skin_target",
+		Vector3(skin.r, skin.g, skin.b)
+	)
+	palette_material.set_shader_parameter(
+		"top_target",
+		Vector3(top.r, top.g, top.b)
+	)
+	palette_material.set_shader_parameter(
+		"pants_target",
+		Vector3(pants.r, pants.g, pants.b)
+	)
+	palette_material.set_shader_parameter("palette_strength", palette_strength)
+
+
 func _set_attack_hitbox(enabled: bool) -> void:
 	attack_shape.disabled = not enabled
 	attack_hitbox.monitoring = enabled
@@ -388,6 +581,10 @@ func _flash_hit() -> void:
 		HIT_FLASH_TIME
 	)
 	
+func _exit_tree() -> void:
+	_release_attack_slot()
+
+
 func _play(animation: StringName, restart := false) -> void:
 	if restart or sprite.animation != animation:
 		sprite.play(animation)

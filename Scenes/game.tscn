@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://dtagrwwf8c6sj" path="res://Scenes/player.tscn" id="2_player"]
 
 [sub_resource type="RectangleShape2D" id="GroundShape"]
-size = Vector2(1152, 128)
+size = Vector2(1472, 128)
 
 [sub_resource type="RectangleShape2D" id="PlatformShape1"]
 size = Vector2(240, 28)
@@ -62,10 +62,10 @@ shape = SubResource("GroundShape")
 
 [node name="Visual" type="Polygon2D" parent="Ground" unique_id=576747059]
 color = Color(0.12, 0.16, 0.17, 1)
-polygon = PackedVector2Array(-576, -64, 576, -64, 576, 64, -576, 64)
+polygon = PackedVector2Array(-736, -64, 736, -64, 736, 64, -736, 64)
 
 [node name="TopLine" type="Line2D" parent="Ground" unique_id=1785924913]
-points = PackedVector2Array(-576, -64, 576, -64)
+points = PackedVector2Array(-736, -64, 736, -64)
 width = 4.0
 default_color = Color(0.32, 0.45, 0.4, 1)
 
@@ -92,18 +92,18 @@ color = Color(0.14, 0.19, 0.2, 1)
 polygon = PackedVector2Array(-95, -14, 95, -14, 95, 14, -95, 14)
 
 [node name="LeftWall" type="StaticBody2D" parent="." unique_id=1355482557]
-position = Vector2(-16, 324)
+position = Vector2(-176, 324)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall" unique_id=271850576]
 shape = SubResource("WallShape")
 
 [node name="RightWall" type="StaticBody2D" parent="." unique_id=577784831]
-position = Vector2(1168, 324)
+position = Vector2(1328, 324)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall" unique_id=943993636]
 shape = SubResource("WallShape")
 
-[node name="Camera2D" type="Camera2D" parent="." unique_id=297166718]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=802103307]
 position = Vector2(576, 324)
 
 [node name="Player" parent="." unique_id=727942902 instance=ExtResource("2_player")]
@@ -126,7 +126,7 @@ text = "GORILLA CONTROLLER // PROTOTYPE"
 offset_left = 22.0
 offset_top = 54.0
 offset_right = 422.0
-offset_bottom = 234.0
+offset_bottom = 190.0
 theme_override_styles/panel = SubResource("HudBox")
 
 [node name="Controls" type="Label" parent="HUD/ControlsPanel" unique_id=1986132668]
@@ -134,7 +134,7 @@ layout_mode = 0
 offset_left = 12.0
 offset_top = 9.0
 offset_right = 388.0
-offset_bottom = 107.0
+offset_bottom = 131.0
 theme_override_font_sizes/font_size = 14
 text = "MOVE  A/D or ←/→   |   Left Stick / D-pad
 RUN   Shift          |   RT
@@ -142,7 +142,8 @@ JUMP  Space/W/↑      |   A
 ATK1  J              |   X
 ATK2  K              |   Y
 SLAM  L              |   RB
-ROLL  Ctrl/C         |   B"
+ROLL  Ctrl/C         |   B
+LOOK  P              |   reroll enemy colors"
 
 [node name="StateLabel" type="Label" parent="HUD" unique_id=1229234048]
 offset_left = 922.0
@@ -155,7 +156,7 @@ SPEED  000
 PAD    Keyboard"
 horizontal_alignment = 2
 
-[node name="ComboLabel" type="Label" parent="HUD" unique_id=532158059]
+[node name="ComboLabel" type="Label" parent="HUD" unique_id=623844260]
 visible = false
 offset_left = 492.0
 offset_top = 72.0
@@ -172,7 +173,7 @@ offset_top = 590.0
 offset_right = 1130.0
 offset_bottom = 620.0
 theme_override_font_sizes/font_size = 14
-text = "HUMAN ENEMY  8 / 8"
+text = "ENEMIES  0 / 10   •   TARGET  --"
 horizontal_alignment = 2
 
 [node name="DebugLabel" type="Label" parent="HUD" unique_id=1246511259]

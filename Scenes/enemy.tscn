@@ -1,7 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://Scripts/enemy.gd" id="1_enemy"]
 [ext_resource type="Script" path="res://Scripts/enemy_hurtbox.gd" id="2_hurtbox"]
+[ext_resource type="Shader" path="res://Shaders/human_palette_swap.gdshader" id="3_palette"]
 
 [sub_resource type="CapsuleShape2D" id="Capsule_enemy"]
 radius = 13.0
@@ -12,6 +13,13 @@ size = Vector2(36, 78)
 
 [sub_resource type="RectangleShape2D" id="Rect_attack"]
 size = Vector2(40, 42)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_human_palette"]
+shader = ExtResource("3_palette")
+shader_parameter/skin_target = Vector3(0.858824, 0.6, 0.470588)
+shader_parameter/top_target = Vector3(0.227451, 0.305882, 0.262745)
+shader_parameter/pants_target = Vector3(0.580392, 0.517647, 0.392157)
+shader_parameter/palette_strength = 1.0
 
 [node name="HumanEnemy" type="CharacterBody2D"]
 script = ExtResource("1_enemy")
@@ -26,6 +34,7 @@ shape = SubResource("Capsule_enemy")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 texture_filter = 1
+material = SubResource("ShaderMaterial_human_palette")
 scale = Vector2(2, 2)
 
 [node name="Hurtbox" type="Area2D" parent="."]

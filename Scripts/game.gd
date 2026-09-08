@@ -2,9 +2,9 @@ extends Node2D
 
 @onready var player = $Player
 @onready var state_label: Label = $HUD/StateLabel
-@onready var enemy_spawn: Marker2D = $EnemySpawn
 @onready var camera: Camera2D = $Camera2D
 @onready var combo_label: Label = $HUD/ComboLabel
+@onready var enemy_label: Label = $HUD/DummyLabel
 
 const ENEMY_SCENE := preload("res://Scenes/enemy.tscn")
 const IMPACT_BURST_SCRIPT := preload("res://Scripts/impact_burst.gd")
@@ -13,7 +13,30 @@ const SFX_HEAVY := preload("res://Audio/impact_heavy.wav")
 const SFX_SLAM := preload("res://Audio/impact_slam.wav")
 const SFX_ENEMY := preload("res://Audio/enemy_hit.wav")
 
-var enemy
+const ENEMY_FLOOR_Y := 472.0
+const OFFSCREEN_LEFT_X := -88.0
+const OFFSCREEN_RIGHT_X := 1240.0
+const INITIAL_LEFT_SLOTS := [80.0, 155.0, 225.0]
+const INITIAL_RIGHT_SLOTS := [590.0, 770.0, 950.0, 1080.0]
+
+@export_category("Enemy Spawning")
+@export_range(0, 12, 1) var initial_enemy_count := 6
+@export_range(1, 20, 1) var max_active_enemies := 10
+@export var enable_reinforcements := true
+@export_range(1, 4, 1) var enemies_per_reinforcement := 2
+@export_range(1.0, 12.0, 0.25) var reinforcement_min_delay := 3.5
+@export_range(1.0, 15.0, 0.25) var reinforcement_max_delay := 5.5
+@export_range(0.0, 5.0, 0.1) var first_reinforcement_delay := 2.25
+
+@export_category("Brawler Crowd Rules")
+@export_range(1, 4, 1) var max_simultaneous_attackers := 2
+
+var enemies: Array[Node] = []
+var tracked_enemy: Node
+var active_attackers: Dictionary = {}
+var reinforcement_timer := 0.0
+var reinforcement_wave_index := 0
+
 var hit_stop_serial := 0
 var shake_strength := 0.0
 var shake_end_msec := 0
@@ -23,21 +46,39 @@ var combo_hide_msec := 0
 
 func _ready() -> void:
 	_configure_input()
-	_spawn_enemy()
+	_spawn_initial_enemies()
+	reinforcement_timer = first_reinforcement_delay
 
 	if is_instance_valid(player) and player.has_signal("attack_landed"):
 		player.attack_landed.connect(_on_player_attack_landed)
 
-func _process(_delta: float) -> void:
+	_update_enemy_hud()
+
+
+func _process(delta: float) -> void:
 	if is_instance_valid(player):
 		var pad_name := "Keyboard"
 		var pads := Input.get_connected_joypads()
 		if not pads.is_empty():
 			pad_name = Input.get_joy_name(pads[0])
-		state_label.text = "STATE  %s\nSPEED  %3d\nPAD    %s" % [player.state_name, int(abs(player.velocity.x)), pad_name]
+
+		state_label.text = "STATE  %s\nSPEED  %3d\nPAD    %s" % [
+			player.state_name,
+			int(abs(player.velocity.x)),
+			pad_name
+		]
 
 	_update_camera_shake()
 	_update_combo_counter()
+	_update_enemy_spawning(delta)
+	_cleanup_attack_slots()
+	_update_enemy_hud()
+
+	if Input.is_action_just_pressed("reroll_enemy_palette"):
+		for enemy_node in _living_enemies():
+			if enemy_node.has_method("reroll_palette"):
+				enemy_node.call("reroll_palette")
+
 
 
 func _configure_input() -> void:
@@ -64,6 +105,9 @@ func _configure_input() -> void:
 	])
 	_set_action("roll", 0.2, [
 		_key(KEY_CTRL), _key(KEY_C), _joy_button(JOY_BUTTON_B)
+	])
+	_set_action("reroll_enemy_palette", 0.2, [
+		_key(KEY_P)
 	])
 	_set_action("debug_death", 0.2, [
 		_key(KEY_BACKSPACE), _joy_button(JOY_BUTTON_BACK)
@@ -232,19 +276,212 @@ func _exit_tree() -> void:
 	Engine.time_scale = 1.0
 
 
-func _spawn_enemy() -> void:
-	enemy = ENEMY_SCENE.instantiate()
-	enemy.global_position = enemy_spawn.global_position
-	add_child(enemy)
-	enemy.set_target(player)
-	if enemy.has_signal("health_changed"):
-		enemy.health_changed.connect(_on_enemy_health_changed)
-	if enemy.has_signal("respawned"):
-		enemy.respawned.connect(_on_enemy_respawned)
-	_on_enemy_health_changed(enemy.health, enemy.max_health)
+func _spawn_initial_enemies() -> void:
+	var left_index := 0
+	var right_index := 0
 
-func _on_enemy_health_changed(current: int, maximum: int) -> void:
-	$HUD/DummyLabel.text = "HUMAN ENEMY  %d / %d" % [current, maximum]
+	for i in range(initial_enemy_count):
+		var spawn_left := i % 2 == 1
+		var x := 0.0
 
-func _on_enemy_respawned(maximum: int) -> void:
-	$HUD/DummyLabel.text = "HUMAN ENEMY  %d / %d" % [maximum, maximum]
+		if spawn_left:
+			if left_index < INITIAL_LEFT_SLOTS.size():
+				x = INITIAL_LEFT_SLOTS[left_index]
+			else:
+				x = randf_range(55.0, 235.0)
+			left_index += 1
+		else:
+			if right_index < INITIAL_RIGHT_SLOTS.size():
+				x = INITIAL_RIGHT_SLOTS[right_index]
+			else:
+				x = randf_range(560.0, 1080.0)
+			right_index += 1
+
+		_spawn_enemy_at(Vector2(x, ENEMY_FLOOR_Y), false)
+
+
+func _update_enemy_spawning(delta: float) -> void:
+	if not enable_reinforcements:
+		return
+
+	reinforcement_timer -= delta
+	if reinforcement_timer > 0.0:
+		return
+
+	if _living_enemies().size() < max_active_enemies:
+		_spawn_reinforcement_wave()
+
+	_reset_reinforcement_timer()
+
+
+func _reset_reinforcement_timer() -> void:
+	var min_delay = min(reinforcement_min_delay, reinforcement_max_delay)
+	var max_delay = max(reinforcement_min_delay, reinforcement_max_delay)
+	reinforcement_timer = randf_range(min_delay, max_delay)
+
+
+func _spawn_reinforcement_wave() -> void:
+	var available := max_active_enemies - _living_enemies().size()
+	if available <= 0:
+		return
+
+	var amount = min(enemies_per_reinforcement, available)
+	var left_offset := 0
+	var right_offset := 0
+
+	for i in range(amount):
+		var spawn_left := (reinforcement_wave_index + i) % 2 == 0
+		var x := OFFSCREEN_LEFT_X
+
+		if spawn_left:
+			x -= float(left_offset) * 38.0
+			left_offset += 1
+		else:
+			x = OFFSCREEN_RIGHT_X + float(right_offset) * 38.0
+			right_offset += 1
+
+		_spawn_enemy_at(Vector2(x, ENEMY_FLOOR_Y), true)
+
+	reinforcement_wave_index += 1
+
+
+func _spawn_enemy_at(spawn_position: Vector2, from_offscreen: bool) -> Node:
+	var enemy_node: Node = ENEMY_SCENE.instantiate()
+	enemy_node.set("auto_respawn", false)
+
+	add_child(enemy_node)
+	enemy_node.set("global_position", spawn_position)
+	enemy_node.call("set_target", player)
+
+	if from_offscreen and enemy_node.has_method("begin_offscreen_entry"):
+		enemy_node.call("begin_offscreen_entry")
+
+	enemy_node.set("cooldown_timer", randf_range(0.20, 0.85))
+
+	if enemy_node.has_signal("health_changed"):
+		enemy_node.connect(
+			"health_changed",
+			_on_enemy_health_changed.bind(enemy_node)
+		)
+
+	enemies.append(enemy_node)
+
+	if tracked_enemy == null or not is_instance_valid(tracked_enemy):
+		tracked_enemy = enemy_node
+
+	return enemy_node
+
+
+func _living_enemies() -> Array[Node]:
+	var living: Array[Node] = []
+
+	for enemy_node in enemies:
+		if not is_instance_valid(enemy_node):
+			continue
+		if bool(enemy_node.get("defeated")):
+			continue
+		if not bool(enemy_node.get("visible")):
+			continue
+		living.append(enemy_node)
+
+	return living
+
+
+func _cleanup_enemy_list() -> void:
+	var cleaned: Array[Node] = []
+
+	for enemy_node in enemies:
+		if is_instance_valid(enemy_node):
+			cleaned.append(enemy_node)
+
+	enemies = cleaned
+
+
+func _nearest_living_enemy() -> Node:
+	var nearest: Node
+	var nearest_distance := INF
+
+	if not is_instance_valid(player):
+		return nearest
+
+	for enemy_node in _living_enemies():
+		var enemy_position: Vector2 = enemy_node.get("global_position")
+		var distance = abs(enemy_position.x - player.global_position.x)
+		if distance < nearest_distance:
+			nearest_distance = distance
+			nearest = enemy_node
+
+	return nearest
+
+
+func _update_enemy_hud() -> void:
+	_cleanup_enemy_list()
+	var living := _living_enemies()
+
+	if (
+		not is_instance_valid(tracked_enemy)
+		or bool(tracked_enemy.get("defeated"))
+		or not bool(tracked_enemy.get("visible"))
+	):
+		tracked_enemy = _nearest_living_enemy()
+
+	if is_instance_valid(tracked_enemy):
+		enemy_label.text = "ENEMIES  %d / %d   •   TARGET  %d / %d" % [
+			living.size(),
+			max_active_enemies,
+			int(tracked_enemy.get("health")),
+			int(tracked_enemy.get("max_health"))
+		]
+	else:
+		enemy_label.text = "ENEMIES  %d / %d   •   CLEAR" % [
+			living.size(),
+			max_active_enemies
+		]
+
+
+func _on_enemy_health_changed(current: int, _maximum: int, source_enemy: Node) -> void:
+	if is_instance_valid(source_enemy) and current > 0:
+		tracked_enemy = source_enemy
+	elif tracked_enemy == source_enemy:
+		tracked_enemy = _nearest_living_enemy()
+
+	_update_enemy_hud()
+
+
+func request_enemy_attack(enemy_node: Node) -> bool:
+	_cleanup_attack_slots()
+
+	var enemy_id := enemy_node.get_instance_id()
+	if active_attackers.has(enemy_id):
+		return true
+
+	if active_attackers.size() >= max_simultaneous_attackers:
+		return false
+
+	active_attackers[enemy_id] = weakref(enemy_node)
+	return true
+
+
+func release_enemy_attack(enemy_node: Node) -> void:
+	if not is_instance_valid(enemy_node):
+		return
+
+	active_attackers.erase(enemy_node.get_instance_id())
+
+
+func _cleanup_attack_slots() -> void:
+	var stale_ids: Array = []
+
+	for enemy_id in active_attackers:
+		var enemy_ref: WeakRef = active_attackers[enemy_id]
+		var enemy_node = enemy_ref.get_ref()
+
+		if (
+			not is_instance_valid(enemy_node)
+			or bool(enemy_node.get("defeated"))
+			or enemy_node.get("state_name") != &"ATTACK"
+		):
+			stale_ids.append(enemy_id)
+
+	for enemy_id in stale_ids:
+		active_attackers.erase(enemy_id)
