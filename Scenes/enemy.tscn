@@ -1,0 +1,51 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://Scripts/enemy.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://Scripts/enemy_hurtbox.gd" id="2_hurtbox"]
+
+[sub_resource type="CapsuleShape2D" id="Capsule_enemy"]
+radius = 13.0
+height = 64.0
+
+[sub_resource type="RectangleShape2D" id="Rect_hurt"]
+size = Vector2(36, 78)
+
+[sub_resource type="RectangleShape2D" id="Rect_attack"]
+size = Vector2(40, 42)
+
+[node name="HumanEnemy" type="CharacterBody2D"]
+script = ExtResource("1_enemy")
+floor_snap_length = 8.0
+floor_stop_on_slope = true
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 15)
+shape = SubResource("Capsule_enemy")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+texture_filter = 1
+scale = Vector2(2, 2)
+
+[node name="Hurtbox" type="Area2D" parent="."]
+collision_layer = 2
+collision_mask = 0
+monitoring = true
+monitorable = true
+script = ExtResource("2_hurtbox")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
+position = Vector2(0, 2)
+shape = SubResource("Rect_hurt")
+
+[node name="AttackHitbox" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 1
+monitoring = false
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackHitbox"]
+position = Vector2(0, 2)
+shape = SubResource("Rect_attack")
+disabled = true

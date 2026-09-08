@@ -1,6 +1,6 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://dtagrwwf8c6sj"]
 
-[ext_resource type="Script" path="res://Scripts/player.gd" id="1_player"]
+[ext_resource type="Script" uid="uid://c1070qcnbfjwx" path="res://Scripts/player.gd" id="1_player"]
 
 [sub_resource type="CapsuleShape2D" id="Capsule_player"]
 radius = 19.0
@@ -9,28 +9,26 @@ height = 64.0
 [sub_resource type="RectangleShape2D" id="Rect_attack"]
 size = Vector2(64, 58)
 
-[node name="Player" type="CharacterBody2D"]
-script = ExtResource("1_player")
+[node name="Player" type="CharacterBody2D" unique_id=2050327655]
 floor_snap_length = 8.0
-floor_stop_on_slope = true
-collision_layer = 1
-collision_mask = 1
+script = ExtResource("1_player")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1555507809]
 position = Vector2(0, 7)
 shape = SubResource("Capsule_player")
 
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=652961089]
 texture_filter = 1
 position = Vector2(0, -22)
 scale = Vector2(2, 2)
 
-[node name="AttackHitbox" type="Area2D" parent="."]
+[node name="AttackHitbox" type="Area2D" parent="." unique_id=1467947006]
 collision_layer = 0
 collision_mask = 2
 monitoring = false
 monitorable = false
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackHitbox"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackHitbox" unique_id=563253112]
+scale = Vector2(0.9, 0.9)
 shape = SubResource("Rect_attack")
 disabled = true

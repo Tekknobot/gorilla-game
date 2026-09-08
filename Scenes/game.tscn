@@ -1,8 +1,7 @@
 [gd_scene format=3 uid="uid://cgvm6y4cnpmmt"]
 
 [ext_resource type="Script" uid="uid://bkxcqvkgex4kl" path="res://Scripts/game.gd" id="1_game"]
-[ext_resource type="PackedScene" path="res://Scenes/player.tscn" id="2_player"]
-[ext_resource type="Script" uid="uid://bua63hwxn4nrd" path="res://Scripts/training_dummy.gd" id="3_dummy"]
+[ext_resource type="PackedScene" uid="uid://dtagrwwf8c6sj" path="res://Scenes/player.tscn" id="2_player"]
 
 [sub_resource type="RectangleShape2D" id="GroundShape"]
 size = Vector2(1152, 128)
@@ -15,9 +14,6 @@ size = Vector2(190, 28)
 
 [sub_resource type="RectangleShape2D" id="WallShape"]
 size = Vector2(32, 648)
-
-[sub_resource type="RectangleShape2D" id="DummyShape"]
-size = Vector2(56, 88)
 
 [sub_resource type="StyleBoxFlat" id="HudBox"]
 bg_color = Color(0.035, 0.043, 0.055, 0.88)
@@ -74,7 +70,7 @@ width = 4.0
 default_color = Color(0.32, 0.45, 0.4, 1)
 
 [node name="Platform1" type="StaticBody2D" parent="." unique_id=1193614863]
-position = Vector2(620, 422)
+position = Vector2(620, 439)
 collision_mask = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform1" unique_id=78651892]
@@ -85,7 +81,7 @@ color = Color(0.14, 0.19, 0.2, 1)
 polygon = PackedVector2Array(-120, -14, 120, -14, 120, 14, -120, 14)
 
 [node name="Platform2" type="StaticBody2D" parent="." unique_id=46598753]
-position = Vector2(860, 326)
+position = Vector2(860, 343)
 collision_mask = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform2" unique_id=1220105546]
@@ -107,35 +103,14 @@ position = Vector2(1168, 324)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall" unique_id=943993636]
 shape = SubResource("WallShape")
 
+[node name="Camera2D" type="Camera2D" parent="." unique_id=297166718]
+position = Vector2(576, 324)
+
 [node name="Player" parent="." unique_id=727942902 instance=ExtResource("2_player")]
 position = Vector2(280, 478)
 
-[node name="TrainingDummy" type="Area2D" parent="." unique_id=523321380]
-position = Vector2(840, 466)
-collision_layer = 2
-collision_mask = 0
-script = ExtResource("3_dummy")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="TrainingDummy" unique_id=1889014648]
-shape = SubResource("DummyShape")
-
-[node name="Body" type="Polygon2D" parent="TrainingDummy" unique_id=1877700949]
-color = Color(0.31, 0.38, 0.43, 1)
-polygon = PackedVector2Array(-23, -44, 23, -44, 28, 38, 0, 45, -28, 38)
-
-[node name="Face" type="Polygon2D" parent="TrainingDummy" unique_id=1479737058]
-position = Vector2(0, -16)
-color = Color(0.12, 0.16, 0.19, 1)
-polygon = PackedVector2Array(-11, -9, 11, -9, 11, 9, -11, 9)
-
-[node name="Label" type="Label" parent="TrainingDummy" unique_id=785087274]
-offset_left = -54.0
-offset_top = -78.0
-offset_right = 54.0
-offset_bottom = -54.0
-theme_override_font_sizes/font_size = 14
-text = "TARGET"
-horizontal_alignment = 1
+[node name="EnemySpawn" type="Marker2D" parent="." unique_id=316559379]
+position = Vector2(840, 472)
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1269905892]
 
@@ -151,7 +126,7 @@ text = "GORILLA CONTROLLER // PROTOTYPE"
 offset_left = 22.0
 offset_top = 54.0
 offset_right = 422.0
-offset_bottom = 168.0
+offset_bottom = 234.0
 theme_override_styles/panel = SubResource("HudBox")
 
 [node name="Controls" type="Label" parent="HUD/ControlsPanel" unique_id=1986132668]
@@ -180,13 +155,24 @@ SPEED  000
 PAD    Keyboard"
 horizontal_alignment = 2
 
+[node name="ComboLabel" type="Label" parent="HUD" unique_id=532158059]
+visible = false
+offset_left = 492.0
+offset_top = 72.0
+offset_right = 660.0
+offset_bottom = 116.0
+pivot_offset = Vector2(84, 22)
+theme_override_font_sizes/font_size = 28
+text = "2 HIT"
+horizontal_alignment = 1
+
 [node name="DummyLabel" type="Label" parent="HUD" unique_id=1262210443]
 offset_left = 770.0
 offset_top = 590.0
 offset_right = 1130.0
 offset_bottom = 620.0
 theme_override_font_sizes/font_size = 14
-text = "TRAINING TARGET  8 / 8"
+text = "HUMAN ENEMY  8 / 8"
 horizontal_alignment = 2
 
 [node name="DebugLabel" type="Label" parent="HUD" unique_id=1246511259]
