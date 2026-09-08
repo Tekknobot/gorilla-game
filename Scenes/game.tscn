@@ -1,0 +1,199 @@
+[gd_scene format=3 uid="uid://cgvm6y4cnpmmt"]
+
+[ext_resource type="Script" uid="uid://bkxcqvkgex4kl" path="res://Scripts/game.gd" id="1_game"]
+[ext_resource type="PackedScene" path="res://Scenes/player.tscn" id="2_player"]
+[ext_resource type="Script" uid="uid://bua63hwxn4nrd" path="res://Scripts/training_dummy.gd" id="3_dummy"]
+
+[sub_resource type="RectangleShape2D" id="GroundShape"]
+size = Vector2(1152, 128)
+
+[sub_resource type="RectangleShape2D" id="PlatformShape1"]
+size = Vector2(240, 28)
+
+[sub_resource type="RectangleShape2D" id="PlatformShape2"]
+size = Vector2(190, 28)
+
+[sub_resource type="RectangleShape2D" id="WallShape"]
+size = Vector2(32, 648)
+
+[sub_resource type="RectangleShape2D" id="DummyShape"]
+size = Vector2(56, 88)
+
+[sub_resource type="StyleBoxFlat" id="HudBox"]
+bg_color = Color(0.035, 0.043, 0.055, 0.88)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.18, 0.24, 0.31, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="Game" type="Node2D" unique_id=1137939861]
+script = ExtResource("1_game")
+
+[node name="Background" type="ColorRect" parent="." unique_id=931572653]
+z_index = -20
+offset_right = 1152.0
+offset_bottom = 648.0
+mouse_filter = 2
+color = Color(0.025, 0.035, 0.05, 1)
+
+[node name="Moon" type="Polygon2D" parent="." unique_id=2144781122]
+z_index = -18
+position = Vector2(950, 108)
+color = Color(0.68, 0.73, 0.78, 0.32)
+polygon = PackedVector2Array(-30, -15, -18, -29, 0, -36, 19, -29, 31, -13, 34, 5, 25, 23, 8, 34, -10, 32, -26, 19, -35, 2)
+
+[node name="Backdrop1" type="Polygon2D" parent="." unique_id=928199808]
+z_index = -15
+color = Color(0.06, 0.09, 0.12, 1)
+polygon = PackedVector2Array(0, 395, 165, 300, 300, 355, 455, 245, 624, 354, 775, 290, 940, 370, 1152, 300, 1152, 520, 0, 520)
+
+[node name="Backdrop2" type="Polygon2D" parent="." unique_id=179522070]
+z_index = -14
+color = Color(0.085, 0.12, 0.15, 1)
+polygon = PackedVector2Array(0, 440, 185, 375, 350, 430, 545, 340, 720, 425, 900, 360, 1152, 420, 1152, 530, 0, 530)
+
+[node name="Ground" type="StaticBody2D" parent="." unique_id=722864363]
+position = Vector2(576, 584)
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground" unique_id=310539220]
+shape = SubResource("GroundShape")
+
+[node name="Visual" type="Polygon2D" parent="Ground" unique_id=576747059]
+color = Color(0.12, 0.16, 0.17, 1)
+polygon = PackedVector2Array(-576, -64, 576, -64, 576, 64, -576, 64)
+
+[node name="TopLine" type="Line2D" parent="Ground" unique_id=1785924913]
+points = PackedVector2Array(-576, -64, 576, -64)
+width = 4.0
+default_color = Color(0.32, 0.45, 0.4, 1)
+
+[node name="Platform1" type="StaticBody2D" parent="." unique_id=1193614863]
+position = Vector2(620, 422)
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform1" unique_id=78651892]
+shape = SubResource("PlatformShape1")
+
+[node name="Visual" type="Polygon2D" parent="Platform1" unique_id=159873220]
+color = Color(0.14, 0.19, 0.2, 1)
+polygon = PackedVector2Array(-120, -14, 120, -14, 120, 14, -120, 14)
+
+[node name="Platform2" type="StaticBody2D" parent="." unique_id=46598753]
+position = Vector2(860, 326)
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform2" unique_id=1220105546]
+shape = SubResource("PlatformShape2")
+
+[node name="Visual" type="Polygon2D" parent="Platform2" unique_id=1593012577]
+color = Color(0.14, 0.19, 0.2, 1)
+polygon = PackedVector2Array(-95, -14, 95, -14, 95, 14, -95, 14)
+
+[node name="LeftWall" type="StaticBody2D" parent="." unique_id=1355482557]
+position = Vector2(-16, 324)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall" unique_id=271850576]
+shape = SubResource("WallShape")
+
+[node name="RightWall" type="StaticBody2D" parent="." unique_id=577784831]
+position = Vector2(1168, 324)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall" unique_id=943993636]
+shape = SubResource("WallShape")
+
+[node name="Player" parent="." unique_id=727942902 instance=ExtResource("2_player")]
+position = Vector2(280, 478)
+
+[node name="TrainingDummy" type="Area2D" parent="." unique_id=523321380]
+position = Vector2(840, 466)
+collision_layer = 2
+collision_mask = 0
+script = ExtResource("3_dummy")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TrainingDummy" unique_id=1889014648]
+shape = SubResource("DummyShape")
+
+[node name="Body" type="Polygon2D" parent="TrainingDummy" unique_id=1877700949]
+color = Color(0.31, 0.38, 0.43, 1)
+polygon = PackedVector2Array(-23, -44, 23, -44, 28, 38, 0, 45, -28, 38)
+
+[node name="Face" type="Polygon2D" parent="TrainingDummy" unique_id=1479737058]
+position = Vector2(0, -16)
+color = Color(0.12, 0.16, 0.19, 1)
+polygon = PackedVector2Array(-11, -9, 11, -9, 11, 9, -11, 9)
+
+[node name="Label" type="Label" parent="TrainingDummy" unique_id=785087274]
+offset_left = -54.0
+offset_top = -78.0
+offset_right = 54.0
+offset_bottom = -54.0
+theme_override_font_sizes/font_size = 14
+text = "TARGET"
+horizontal_alignment = 1
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1269905892]
+
+[node name="Title" type="Label" parent="HUD" unique_id=515136678]
+offset_left = 24.0
+offset_top = 18.0
+offset_right = 480.0
+offset_bottom = 50.0
+theme_override_font_sizes/font_size = 22
+text = "GORILLA CONTROLLER // PROTOTYPE"
+
+[node name="ControlsPanel" type="Panel" parent="HUD" unique_id=719880218]
+offset_left = 22.0
+offset_top = 54.0
+offset_right = 422.0
+offset_bottom = 168.0
+theme_override_styles/panel = SubResource("HudBox")
+
+[node name="Controls" type="Label" parent="HUD/ControlsPanel" unique_id=1986132668]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 9.0
+offset_right = 388.0
+offset_bottom = 107.0
+theme_override_font_sizes/font_size = 14
+text = "MOVE  A/D or ←/→   |   Left Stick / D-pad
+RUN   Shift          |   RT
+JUMP  Space/W/↑      |   A
+ATK1  J              |   X
+ATK2  K              |   Y
+SLAM  L              |   RB
+ROLL  Ctrl/C         |   B"
+
+[node name="StateLabel" type="Label" parent="HUD" unique_id=1229234048]
+offset_left = 922.0
+offset_top = 20.0
+offset_right = 1130.0
+offset_bottom = 96.0
+theme_override_font_sizes/font_size = 14
+text = "STATE  IDLE
+SPEED  000
+PAD    Keyboard"
+horizontal_alignment = 2
+
+[node name="DummyLabel" type="Label" parent="HUD" unique_id=1262210443]
+offset_left = 770.0
+offset_top = 590.0
+offset_right = 1130.0
+offset_bottom = 620.0
+theme_override_font_sizes/font_size = 14
+text = "TRAINING TARGET  8 / 8"
+horizontal_alignment = 2
+
+[node name="DebugLabel" type="Label" parent="HUD" unique_id=1246511259]
+modulate = Color(1, 1, 1, 0.62)
+offset_left = 24.0
+offset_top = 602.0
+offset_right = 600.0
+offset_bottom = 628.0
+theme_override_font_sizes/font_size = 13
+text = "BACKSPACE / View = test death    •    R / Start = respawn"
